@@ -1,0 +1,327 @@
+<html>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        
+        .displaycanvas {
+            background-color: black;
+            position: absolute;
+            top: 0px;
+            left: 0px;
+        }
+        
+        .xsprites {
+            display: none;
+            visibility: hidden;
+        }
+    </style>
+    <script>
+        var theCameraIn3D = {
+            x: 0,
+            y: -15,
+            z: 0
+        };
+            
+        var theDistanceCameraFromScreen = 5;
+        var theDistanceCameraFromCar = 10;
+        
+        var theTracklineWidth = 30;
+        var theViewDepth = 40;
+        
+        var theHalfRoadWidth = 15;
+        var theRumbleWidth = 0.5;
+        
+        var theTrackData = [];
+        
+        function pushTrack() {
+            theTrackData.push({
+                xoffset: 0.1
+            });
+        }
+
+        for (i=0;i<100;i++) {
+            pushTrack();
+        }
+        
+        function project3D(aPointIn3D, aCameraPositionIn3D, aScreenSize, aXOffset) {
+            var theTranslatedX1 = aPointIn3D.x - aCameraPositionIn3D.x;
+            var theTranslatedY1 = aPointIn3D.y - aCameraPositionIn3D.y;
+            var theTranslatedZ1 = aPointIn3D.z - aCameraPositionIn3D.z;
+                
+            var theProjectedX1 = theTranslatedX1 * theDistanceCameraFromScreen / theTranslatedZ1;
+            var theProjectedY1 = theTranslatedY1 * theDistanceCameraFromScreen / theTranslatedZ1;
+            
+            var theXScreen = (aScreenSize.width/2) + (aScreenSize.width/2) * theProjectedX1 + aXOffset;
+            var theYScreen = (aScreenSize.height/2) + (aScreenSize.height/2) * theProjectedY1;
+            
+            return {
+                x: theXScreen,
+                y: theYScreen
+            };
+        }
+        
+        function renderTrack() {
+        
+            var theWidth = window.innerWidth;
+            var theHeight = window.innerHeight;
+            
+            var theScreenSize = {
+                width : theWidth,
+                height : theHeight
+            };
+            
+            var theCanvas = document.getElementById("canvas");
+            var theContext2D = theCanvas.getContext("2d");        
+
+            theCanvas.width = theWidth;
+            theCanvas.height = theHeight;
+            
+            // Compute the XOffset for curves
+            var theXOffset = 0.0;
+            var theDX = 0;
+            
+            // Compute curve start correctly
+            //http://codeincomplete.com/posts/2012/6/24/javascript_racer_v2_curves/
+            
+            //http://pixel.garoux.net/game/44
+
+            // Compute the correct starting values,
+            // As we Paint from Back to Front
+            for (z=theViewDepth; z>=1; z--) {            
+                var theNearestZ = (Math.floor(theCameraIn3D.z/theTracklineWidth) + z + 1) * theTracklineWidth;
+                
+                var theTrackdataOffset = Math.floor(theNearestZ/theTracklineWidth) % theTrackData.length;
+                var theTrackdataSegment = theTrackData[theTrackdataOffset];
+                
+                theXOffset+=theDX;
+                theDX+=theTrackdataSegment.xoffset;
+            }
+            
+            for (z=theViewDepth; z>=1; z--) {            
+                
+                // Nearer Points
+                var theNearestZ = (Math.floor(theCameraIn3D.z/theTracklineWidth) + z + 1) * theTracklineWidth;
+                
+                var theTrackdataOffset = Math.floor(theNearestZ/theTracklineWidth) % theTrackData.length;
+                var theTrackdataSegment = theTrackData[theTrackdataOffset];
+                
+                var theLine11 = project3D(
+                    {
+                        x: -theHalfRoadWidth,
+                        y: 0,
+                        z: theNearestZ    
+                    }, 
+                    theCameraIn3D,
+                    theScreenSize,
+                    theXOffset
+                );
+                var theLine12 = project3D(
+                    {
+                        x: -theHalfRoadWidth+theRumbleWidth,
+                        y: 0,
+                        z: theNearestZ    
+                    }, 
+                    theCameraIn3D,
+                    theScreenSize,
+                    theXOffset
+                );                
+                var theLine13 = project3D(
+                    {
+                        x: theHalfRoadWidth-theRumbleWidth,
+                        y: 0,
+                        z: theNearestZ    
+                    }, 
+                    theCameraIn3D,
+                    theScreenSize,
+                    theXOffset
+                );
+                var theLine14 = project3D(
+                    {
+                        x: theHalfRoadWidth,
+                        y: 0,
+                        z: theNearestZ    
+                    }, 
+                    theCameraIn3D,
+                    theScreenSize,
+                    theXOffset
+                );
+                
+                // Update the offset
+                theXOffset-=theDX;
+                theDX-=theTrackdataSegment.xoffset;
+                
+                // Farest points
+                var theDeepestZ = (Math.floor(theCameraIn3D.z/theTracklineWidth) + z) * theTracklineWidth;
+                
+                var theLine21 = project3D(
+                    {
+                        x: -theHalfRoadWidth,
+                        y: 0,
+                        z: theDeepestZ    
+                    }, 
+                    theCameraIn3D,
+                    theScreenSize,
+                    theXOffset
+                );
+                var theLine22 = project3D(
+                    {
+                        x: -theHalfRoadWidth+theRumbleWidth,
+                        y: 0,
+                        z: theDeepestZ
+                    }, 
+                    theCameraIn3D,
+                    theScreenSize,
+                    theXOffset
+                );                
+                var theLine23 = project3D(
+                    {
+                        x: theHalfRoadWidth-theRumbleWidth,
+                        y: 0,
+                        z: theDeepestZ
+                    }, 
+                    theCameraIn3D,
+                    theScreenSize,
+                    theXOffset
+                );
+                var theLine24 = project3D(
+                    {
+                        x: theHalfRoadWidth,
+                        y: 0,
+                        z: theDeepestZ
+                    }, 
+                    theCameraIn3D,
+                    theScreenSize,
+                    theXOffset
+                );
+
+                // Do some Backface-Culling
+                if (theLine21.y <= theLine11.y) {
+                    continue;
+                }
+                
+                // Test if odd or even lane for clor switching
+                var theOddOrEven = Math.floor(theDeepestZ / theTracklineWidth) % 2;
+                
+                //
+                // Draw the things next to the road
+                //
+                if (theOddOrEven == 0) {
+                    // Dark
+                    theContext2D.fillStyle="rgb(230,214,197)";
+                    theContext2D.strokeStyle="rgb(230,214,197)";
+                } else {
+                    // Light
+                    theContext2D.fillStyle="rgb(239,222,206)";
+                    theContext2D.strokeStyle="rgb(239,222,206)";
+                }
+                
+                // Left side
+                theContext2D.beginPath();
+                theContext2D.moveTo(0, theLine11.y);
+                theContext2D.lineTo(theLine11.x, theLine11.y);
+                theContext2D.lineTo(theLine21.x, theLine21.y);
+                theContext2D.lineTo(0, theLine21.y);
+                theContext2D.closePath();
+                theContext2D.fill();
+                theContext2D.stroke();
+                
+                // Right side
+                theContext2D.beginPath();
+                theContext2D.moveTo(theWidth, theLine14.y);
+                theContext2D.lineTo(theLine14.x, theLine14.y);
+                theContext2D.lineTo(theLine24.x, theLine24.y);
+                theContext2D.lineTo(theWidth, theLine24.y);
+                theContext2D.closePath();
+                theContext2D.fill();
+                theContext2D.stroke();
+                
+                // 
+                // Draw the rumbles
+                //
+                if (theOddOrEven == 0) {
+                    // Dark
+                    theContext2D.fillStyle="rgb(128,0,0)";
+                    theContext2D.strokeStyle="rgb(128,0,0)";
+                } else {
+                    // Light
+                    theContext2D.fillStyle="rgb(255,255,255)";
+                    theContext2D.strokeStyle="rgb(255,255,255)";
+                }
+                
+                // Left side
+                theContext2D.beginPath();
+                theContext2D.moveTo(theLine11.x, theLine11.y);
+                theContext2D.lineTo(theLine12.x, theLine12.y);
+                theContext2D.lineTo(theLine22.x, theLine22.y);
+                theContext2D.lineTo(theLine21.x, theLine21.y);
+                theContext2D.closePath();
+                theContext2D.fill();
+                theContext2D.stroke();
+                
+                // Right side
+                theContext2D.beginPath();
+                theContext2D.moveTo(theLine13.x, theLine13.y);
+                theContext2D.lineTo(theLine14.x, theLine14.y);
+                theContext2D.lineTo(theLine24.x, theLine24.y);
+                theContext2D.lineTo(theLine23.x, theLine23.y);
+                theContext2D.closePath();
+                theContext2D.fill();
+                theContext2D.stroke();
+                
+                //
+                // Draw the road
+                //
+                if (theOddOrEven == 1) {
+                    // Dark
+                    theContext2D.fillStyle="rgb(148,148,148)";
+                    theContext2D.strokeStyle="rgb(148,148,148)";
+                } else {
+                    // Light
+                    theContext2D.fillStyle="rgb(156,156,156)";
+                    theContext2D.strokeStyle="rgb(156,156,156)";
+                }
+                theContext2D.beginPath();
+                theContext2D.moveTo(theLine12.x, theLine12.y);
+                theContext2D.lineTo(theLine13.x, theLine13.y);
+                theContext2D.lineTo(theLine23.x, theLine23.y);
+                theContext2D.lineTo(theLine22.x, theLine22.y);
+                theContext2D.closePath();
+                theContext2D.fill();
+                theContext2D.stroke();
+
+                var theFerrariLeft = document.getElementById("ferrari_left1");           
+                
+                theContext2D.drawImage(theFerrariLeft, theScreenSize.width / 2 - 120, theScreenSize.height - 150, 240, 140);                
+                
+                var theColumn = document.getElementById("column");                
+                var theScale = (theViewDepth - z) * 0.04;
+                theContext2D.drawImage(theColumn, theLine14.x, theLine14.y - 126 * theScale, 80 * theScale, 126 * theScale);                                
+            }
+        }
+        
+        function gameLoop(aTimestamp) {
+            renderTrack();
+            
+            theCameraIn3D.z+=2;
+            
+            window.requestAnimationFrame(gameLoop);
+        }
+        
+        function loaded() {
+            window.requestAnimationFrame(gameLoop);            
+        }
+        
+    </script>
+    <body onload="loaded()">
+        <canvas id="canvas" class="displaycanvas"></canvas>
+        <div id="sprites">
+            <img id="ferrari_left1" src="sprites/ferrari_left1.png"/>
+            <img id="column" src="sprites/column.png"/>
+        </div>            
+    </body>
+</html>
